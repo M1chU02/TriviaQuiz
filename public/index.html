@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trivia Quiz Game</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Home Screen -->
+      <div id="home-screen" class="screen">
+        <h1>Trivia Quiz Game</h1>
+        <button id="create-lobby-btn">Create Lobby</button>
+        <button id="join-lobby-btn">Join Lobby</button>
+        <div id="category-container"></div>
+      </div>
+
+      <!-- Lobby Screen -->
+      <div id="lobby-screen" class="screen hidden">
+        <h1 id="lobby-title">Lobby</h1>
+        <div id="lobby-settings" class="hidden">
+          <h2>Lobby Settings</h2>
+          <p>Questions: <span id="questions-count"></span></p>
+          <p>Category: <span id="category-name"></span></p>
+          <button id="start-game-btn" class="button hidden">Start Game</button>
+        </div>
+        <h2>Players</h2>
+        <ul id="players-list"></ul>
+        <p id="lobby-id-display" class="hidden"></p>
+      </div>
+
+      <!-- Game Screen (placeholder for now) -->
+      <div id="game-screen" class="screen hidden">
+        <h1>Game Screen</h1>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

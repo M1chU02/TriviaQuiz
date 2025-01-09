@@ -1,0 +1,47 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f9;
+  color: #333;
+  text-align: center;
+}
+
+h1 {
+  margin: 20px 0;
+}
+
+.screen.active {
+  display: block;
+  padding: 20px;
+}
+
+.button {
+  padding: 10px 20px;
+  margin: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.button:hover {
+  background-color: #0056b3;
+}
+
+.hidden {
+  display: none;
+}
+
+#players-list {
+  list-style: none;
+  padding: 0;
+}
+
+#players-list li {
+  margin: 10px 0;
+  padding: 5px;
+  background-color: #e9ecef;
+  border-radius: 5px;
+}
