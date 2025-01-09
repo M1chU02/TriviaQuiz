@@ -1,33 +1,48 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: "Roboto", sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #f4f4f9;
-  color: #333;
+  background: #2c2c2c;
+  color: #e0e0e0;
   text-align: center;
 }
 
-h1 {
+h1,
+h2 {
   margin: 20px 0;
+  color: #ffffff;
+}
+
+.screen {
+  padding: 20px;
 }
 
 .screen.active {
-  display: block;
-  padding: 20px;
+  display: flex;
 }
 
 .button {
   padding: 10px 20px;
   margin: 10px;
-  background-color: #007bff;
-  color: white;
+  background-color: #444444;
+  color: #e0e0e0;
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  font-size: 16px;
+  font-weight: bold;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .button:hover {
-  background-color: #0056b3;
+  background-color: #555555;
+  transform: translateY(-2px);
+}
+
+.button:active {
+  background-color: #666666;
+  transform: translateY(0);
 }
 
 .hidden {
@@ -41,7 +56,42 @@ h1 {
 
 #players-list li {
   margin: 10px 0;
-  padding: 5px;
-  background-color: #e9ecef;
+  padding: 10px;
+  background-color: #444444;
   border-radius: 5px;
+}
+
+#players-list li.highlight {
+  background-color: #555555;
+}
+
+input,
+select {
+  padding: 10px;
+  margin: 10px 0;
+  border: none;
+  outline: none;
+  border-radius: 5px;
+  width: calc(100% - 22px);
+  background-color: #444444;
+  color: #e0e0e0;
+}
+
+form {
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+label {
+  display: block;
+  margin: 10px 0 5px;
+  color: #e0e0e0;
+}
+
+#lobby-id-display {
+  margin-top: 20px;
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #ffffff;
 }

@@ -5,15 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Trivia Quiz Game</title>
     <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+      rel="stylesheet" />
   </head>
   <body>
     <div id="app">
       <!-- Home Screen -->
       <div id="home-screen" class="screen">
         <h1>Trivia Quiz Game</h1>
-        <button id="create-lobby-btn">Create Lobby</button>
-        <button id="join-lobby-btn">Join Lobby</button>
-        <div id="category-container"></div>
+        <button id="create-lobby-btn" class="button">Create Lobby</button>
+        <button id="join-lobby-btn" class="button">Join Lobby</button>
+      </div>
+
+      <!-- Create Lobby Form -->
+      <div id="create-lobby-form" class="screen hidden">
+        <h2>Create Lobby</h2>
+        <form id="create-lobby">
+          <label for="create-username">Username:</label>
+          <input type="text" id="create-username" required />
+          <label for="num-questions">Number of Questions:</label>
+          <input type="number" id="num-questions" min="1" max="50" required />
+          <label for="category-select">Category:</label>
+          <select id="category-select"></select>
+          <button type="submit" class="button">Create</button>
+        </form>
+      </div>
+
+      <!-- Join Lobby Form -->
+      <div id="join-lobby-form" class="screen hidden">
+        <h2>Join Lobby</h2>
+        <form id="join-lobby">
+          <label for="join-username">Username:</label>
+          <input type="text" id="join-username" required />
+          <label for="lobby-id">Lobby ID:</label>
+          <input type="text" id="lobby-id" required />
+          <button type="submit" class="button">Join</button>
+        </form>
       </div>
 
       <!-- Lobby Screen -->
@@ -28,6 +56,8 @@
         <h2>Players</h2>
         <ul id="players-list"></ul>
         <p id="lobby-id-display" class="hidden"></p>
+        <button id="leave-lobby-btn" class="button">Leave Lobby</button>
+        <!-- Ensure this line is present -->
       </div>
 
       <!-- Game Screen (placeholder for now) -->

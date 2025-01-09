@@ -3,12 +3,33 @@ const http = require("http");
 const { Server } = require("socket.io");
 const axios = require("axios");
 const dotenv = require("dotenv");
+const session = require("express-session");
+const cookieParser = require("cookie-parser");
+const sharedSession = require("express-socket.io-session");
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+// Middleware for sessions
+const sessionMiddleware = session({
+  secret: "your-secret-key",
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false }, // Set to true if using HTTPS
+});
+
+app.use(cookieParser());
+app.use(sessionMiddleware);
+
+// Share session with Socket.IO
+io.use(
+  sharedSession(sessionMiddleware, {
+    autoSave: true,
+  })
+);
 
 // Game variables
 const lobbies = {}; // Store lobbies (public/private games)
@@ -56,6 +77,34 @@ app.use(express.static("public"));
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
+  // Retrieve session ID from cookies
+  const cookieHeader = socket.handshake.headers.cookie;
+  const sessionId = cookieHeader
+    ? cookieHeader
+        .split("; ")
+        .find((row) => row.startsWith("connect.sid"))
+        ?.split("=")[1]
+    : null;
+
+  // Reconnect user if session exists
+  if (sessionId && socket.handshake.session) {
+    const userSession = socket.handshake.session[sessionId];
+    if (userSession) {
+      const { lobbyId, username } = userSession;
+      const lobby = lobbies[lobbyId];
+      if (lobby) {
+        const isHost = lobby.host === socket.id;
+        lobby.players.push({ id: socket.id, username, score: 0 });
+        socket.join(lobbyId);
+        io.to(lobbyId).emit("playerJoined", {
+          players: lobby.players,
+          hostId: lobby.host,
+        });
+        console.log(`${username} rejoined lobby ${lobbyId}`);
+      }
+    }
+  }
+
   // Send trivia categories to the client
   socket.on("getCategories", () => {
     socket.emit("categories", triviaCategories);
@@ -76,6 +125,9 @@ io.on("connection", (socket) => {
         return;
       }
 
+      const categoryName =
+        triviaCategories.find((cat) => cat.id === category)?.name || "Unknown";
+
       lobbies[lobbyId] = {
         id: lobbyId,
         isPrivate,
@@ -86,8 +138,16 @@ io.on("connection", (socket) => {
         gameStarted: false, // Track if the game has started
       };
 
+      // Save session
+      socket.handshake.session[sessionId] = { lobbyId, username };
+      socket.handshake.session.save();
+
       socket.join(lobbyId);
-      io.to(socket.id).emit("lobbyCreated", { lobbyId });
+      io.to(socket.id).emit("lobbyCreated", {
+        lobbyId,
+        numQuestions,
+        categoryName,
+      });
       console.log(`Lobby ${lobbyId} created by ${username}`);
     }
   );
@@ -105,10 +165,44 @@ io.on("connection", (socket) => {
       return;
     }
 
+    const isHost = lobby.host === socket.id;
     lobby.players.push({ id: socket.id, username, score: 0 });
+
+    // Save session
+    socket.handshake.session[sessionId] = { lobbyId, username };
+    socket.handshake.session.save();
+
     socket.join(lobbyId);
-    io.to(lobbyId).emit("playerJoined", { players: lobby.players });
+    io.to(lobbyId).emit("playerJoined", {
+      players: lobby.players,
+      hostId: lobby.host,
+    });
     console.log(`${username} joined lobby ${lobbyId}`);
+  });
+
+  // Handle leaving a lobby
+  socket.on("leaveLobby", ({ lobbyId }) => {
+    const lobby = lobbies[lobbyId];
+    if (!lobby) return;
+
+    lobby.players = lobby.players.filter((p) => p.id !== socket.id);
+
+    if (lobby.players.length === 0) {
+      delete lobbies[lobbyId];
+      console.log(`Lobby ${lobbyId} deleted due to inactivity.`);
+    } else {
+      io.to(lobbyId).emit("playerLeft", { players: lobby.players });
+    }
+
+    // Clear session
+    if (sessionId && socket.handshake.session) {
+      delete socket.handshake.session[sessionId];
+      socket.handshake.session.save();
+    }
+
+    socket.leave(lobbyId);
+    io.to(socket.id).emit("lobbyLeft");
+    console.log(`User ${socket.id} left lobby ${lobbyId}`);
   });
 
   // Start the quiz (only the host can start the quiz)

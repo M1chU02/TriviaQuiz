@@ -2,6 +2,8 @@ const socket = io();
 
 // DOM elements
 const homeScreen = document.getElementById("home-screen");
+const createLobbyForm = document.getElementById("create-lobby-form");
+const joinLobbyForm = document.getElementById("join-lobby-form");
 const lobbyScreen = document.getElementById("lobby-screen");
 const gameScreen = document.getElementById("game-screen");
 
@@ -14,6 +16,15 @@ const questionsCount = document.getElementById("questions-count");
 const categoryName = document.getElementById("category-name");
 const lobbyIdDisplay = document.getElementById("lobby-id-display");
 
+const createLobbyFormElement = document.getElementById("create-lobby");
+const joinLobbyFormElement = document.getElementById("join-lobby");
+const createUsernameInput = document.getElementById("create-username");
+const numQuestionsInput = document.getElementById("num-questions");
+const categorySelect = document.getElementById("category-select");
+const joinUsernameInput = document.getElementById("join-username");
+const lobbyIdInput = document.getElementById("lobby-id");
+const leaveLobbyBtn = document.getElementById("leave-lobby-btn");
+
 let isHost = false; // Tracks if the user is the host
 let lobbyId = null;
 let categories = [];
@@ -22,15 +33,12 @@ let categories = [];
 socket.emit("getCategories");
 socket.on("categories", (fetchedCategories) => {
   categories = fetchedCategories;
-  const categorySelect = document.createElement("select");
-  categorySelect.id = "category-select";
   categories.forEach((category) => {
     const option = document.createElement("option");
     option.value = category.id;
     option.textContent = category.name;
     categorySelect.appendChild(option);
   });
-  document.getElementById("category-container").appendChild(categorySelect);
 });
 
 // Navigate between screens
@@ -41,51 +49,83 @@ function showScreen(screen) {
   screen.classList.remove("hidden");
 }
 
-// Handle creating a lobby
+// Show create lobby form
 createLobbyBtn.addEventListener("click", () => {
-  const username = prompt("Enter your username:");
-  const numQuestions =
-    parseInt(prompt("Enter the number of questions:"), 10) || 10;
-  const categorySelect = document.getElementById("category-select");
-  const category = categorySelect ? parseInt(categorySelect.value, 10) : 9;
+  showScreen(createLobbyForm);
+});
 
-  if (username) {
+// Show join lobby form
+joinLobbyBtn.addEventListener("click", () => {
+  showScreen(joinLobbyForm);
+});
+
+// Handle creating a lobby
+createLobbyFormElement.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const username = createUsernameInput.value;
+  const numQuestions = parseInt(numQuestionsInput.value, 10);
+  const category = parseInt(categorySelect.value, 10);
+
+  if (username && numQuestions && category) {
+    isHost = true;
     socket.emit("createLobby", {
       username,
       isPrivate: false,
       numQuestions,
       category,
     });
-    isHost = true;
   }
 });
 
 // Handle joining a lobby
-joinLobbyBtn.addEventListener("click", () => {
-  const username = prompt("Enter your username:");
-  const enteredLobbyId = prompt("Enter the lobby ID:");
+joinLobbyFormElement.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const username = joinUsernameInput.value;
+  const enteredLobbyId = lobbyIdInput.value;
 
   if (username && enteredLobbyId) {
-    socket.emit("joinLobby", { lobbyId: enteredLobbyId, username });
     isHost = false;
+    socket.emit("joinLobby", { lobbyId: enteredLobbyId, username });
   }
+});
+
+// Handle leaving a lobby
+leaveLobbyBtn.addEventListener("click", () => {
+  console.log("Leave lobby button clicked");
+  if (lobbyId) {
+    socket.emit("leaveLobby", { lobbyId });
+    showScreen(homeScreen);
+  }
+});
+
+// Listen for lobby leave confirmation
+socket.on("lobbyLeft", () => {
+  showScreen(homeScreen);
 });
 
 // Listen for lobby creation
-socket.on("lobbyCreated", ({ lobbyId: createdLobbyId }) => {
-  lobbyId = createdLobbyId;
-  showScreen(lobbyScreen);
-  updateLobbyUI();
-  if (isHost) {
-    lobbyIdDisplay.textContent = `Lobby ID: ${lobbyId}`;
-    lobbyIdDisplay.classList.remove("hidden");
+socket.on(
+  "lobbyCreated",
+  ({ lobbyId: createdLobbyId, numQuestions, categoryName }) => {
+    lobbyId = createdLobbyId;
+    showScreen(lobbyScreen);
+    updateLobbyUI({ numQuestions, categoryName });
+    if (isHost) {
+      lobbyIdDisplay.textContent = `Lobby ID: ${lobbyId}`;
+      lobbyIdDisplay.classList.remove("hidden");
+    }
   }
-});
+);
 
 // Listen for players joining
 socket.on("playerJoined", ({ players }) => {
   updatePlayerList(players);
   showScreen(lobbyScreen);
+});
+
+// Listen for lobby leave confirmation
+socket.on("lobbyLeft", () => {
+  showScreen(homeScreen);
 });
 
 // Update lobby UI
@@ -110,6 +150,10 @@ function updatePlayerList(players) {
   players.forEach((player) => {
     const li = document.createElement("li");
     li.textContent = player.username;
+    if (player.id === socket.id) {
+      li.classList.add("highlight"); // Highlight your username
+      li.style.fontWeight = "bold"; // Highlight your username
+    }
     playersList.appendChild(li);
   });
 }
