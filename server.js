@@ -90,16 +90,41 @@ io.on("connection", (socket) => {
   if (sessionId && socket.handshake.session) {
     const userSession = socket.handshake.session[sessionId];
     if (userSession) {
-      const { lobbyId, username } = userSession;
+      const { lobbyId, username, isHost } = userSession;
       const lobby = lobbies[lobbyId];
       if (lobby) {
-        const isHost = lobby.host === socket.id;
         lobby.players.push({ id: socket.id, username, score: 0 });
         socket.join(lobbyId);
         io.to(lobbyId).emit("playerJoined", {
           players: lobby.players,
           hostId: lobby.host,
         });
+        if (isHost) {
+          lobby.host = socket.id; // Restore host status
+          io.to(socket.id).emit("lobbyCreated", {
+            lobbyId,
+            numQuestions: lobby.questions.length,
+            categoryName:
+              triviaCategories.find(
+                (cat) => cat.id === lobby.questions[0].category
+              )?.name || "Unknown",
+          });
+          // Ensure host screen is displayed
+          io.to(socket.id).emit("hostReconnected", {
+            lobbyId,
+            numQuestions: lobby.questions.length,
+            categoryName:
+              triviaCategories.find(
+                (cat) => cat.id === lobby.questions[0].category
+              )?.name || "Unknown",
+          });
+        } else {
+          io.to(socket.id).emit("playerReconnected", {
+            lobbyId,
+            players: lobby.players,
+            hostId: lobby.host,
+          });
+        }
         console.log(`${username} rejoined lobby ${lobbyId}`);
       }
     }
@@ -139,7 +164,7 @@ io.on("connection", (socket) => {
       };
 
       // Save session
-      socket.handshake.session[sessionId] = { lobbyId, username };
+      socket.handshake.session[sessionId] = { lobbyId, username, isHost: true };
       socket.handshake.session.save();
 
       socket.join(lobbyId);
@@ -191,6 +216,11 @@ io.on("connection", (socket) => {
       delete lobbies[lobbyId];
       console.log(`Lobby ${lobbyId} deleted due to inactivity.`);
     } else {
+      if (lobby.host === socket.id) {
+        // Assign a new host if the current host leaves
+        lobby.host = lobby.players[0].id;
+        io.to(lobby.host).emit("hostAssigned");
+      }
       io.to(lobbyId).emit("playerLeft", { players: lobby.players });
     }
 
@@ -274,13 +304,72 @@ io.on("connection", (socket) => {
     console.log("A user disconnected:", socket.id);
     for (const lobbyId in lobbies) {
       const lobby = lobbies[lobbyId];
-      lobby.players = lobby.players.filter((p) => p.id !== socket.id);
+      const player = lobby.players.find((p) => p.id === socket.id);
 
-      if (lobby.players.length === 0) {
-        delete lobbies[lobbyId];
-        console.log(`Lobby ${lobbyId} deleted due to inactivity.`);
-      } else {
-        io.to(lobbyId).emit("playerLeft", { players: lobby.players });
+      if (player) {
+        if (lobby.host === socket.id) {
+          // If the host disconnects, assign a new host
+          if (lobby.players.length > 1) {
+            lobby.players = lobby.players.filter((p) => p.id !== socket.id);
+            lobby.host = lobby.players[0].id; // Assign new host
+            io.to(lobby.host).emit("hostAssigned");
+            io.to(lobbyId).emit("playerLeft", { players: lobby.players });
+            console.log(`Host left, new host assigned in lobby ${lobbyId}`);
+          } else {
+            // If the host is the only player, delete the lobby
+            delete lobbies[lobbyId];
+            console.log(`Lobby ${lobbyId} deleted due to inactivity.`);
+          }
+        } else {
+          // If a non-host player disconnects
+          lobby.players = lobby.players.filter((p) => p.id !== socket.id);
+          io.to(lobbyId).emit("playerLeft", { players: lobby.players });
+          console.log(`Player left lobby ${lobbyId}`);
+        }
+      }
+    }
+  });
+
+  // Handle player reconnection
+  socket.on("reconnect", () => {
+    const userSession = socket.handshake.session[sessionId];
+    if (userSession) {
+      const { lobbyId, username, isHost } = userSession;
+      const lobby = lobbies[lobbyId];
+      if (lobby) {
+        lobby.players.push({ id: socket.id, username, score: 0 });
+        socket.join(lobbyId);
+        io.to(lobbyId).emit("playerJoined", {
+          players: lobby.players,
+          hostId: lobby.host,
+        });
+        if (isHost) {
+          lobby.host = socket.id; // Restore host status
+          io.to(socket.id).emit("lobbyCreated", {
+            lobbyId,
+            numQuestions: lobby.questions.length,
+            categoryName:
+              triviaCategories.find(
+                (cat) => cat.id === lobby.questions[0].category
+              )?.name || "Unknown",
+          });
+          // Ensure host screen is displayed
+          io.to(socket.id).emit("hostReconnected", {
+            lobbyId,
+            numQuestions: lobby.questions.length,
+            categoryName:
+              triviaCategories.find(
+                (cat) => cat.id === lobby.questions[0].category
+              )?.name || "Unknown",
+          });
+        } else {
+          io.to(socket.id).emit("playerReconnected", {
+            lobbyId,
+            players: lobby.players,
+            hostId: lobby.host,
+          });
+        }
+        console.log(`${username} rejoined lobby ${lobbyId}`);
       }
     }
   });
